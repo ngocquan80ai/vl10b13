@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <!-- Ràng buộc 2: Chống lỗi Font Tiếng Việt -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học liệu Tương tác: Bài 13 - Tổng hợp và Phân tích lực</title>
+
+    <!-- Tải các thư viện qua CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuedraggable@4.1.0/dist/vuedraggable.umd.min.js"></script>
+
+    <!-- Ràng buộc 3: Cấu hình MathJax chuẩn để render LaTeX -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            startup: { typeset: false } // Tắt tự động render ban đầu để Vue chủ động gọi
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        .animate-fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+
+<body class="bg-blue-50 p-4 md:p-8 font-sans min-h-screen text-gray-800">
+    <!-- Vue App Container -->
+    <div id="app" v-cloak class="max-w-6xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden p-6 md:p-8 border border-blue-100">
+        
+        <!-- Header -->
+        <h1 class="text-3xl font-extrabold text-center text-blue-700 mb-2 uppercase tracking-wide">
+            BÀI 13: TỔNG HỢP VÀ PHÂN TÍCH LỰC
+        </h1>
+        <p class="text-center text-gray-500 mb-8 font-medium">Vật lí 10 - Kết nối tri thức với cuộc sống</p>
+
+        <!-- Thanh điều hướng 4 Tabs -->
+        <div class="flex flex-wrap border-b-2 border-blue-200 mb-6 gap-1 bg-gray-50 rounded-t-lg">
+            <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
+                :class="['px-6 py-4 font-bold text-lg transition-all duration-300', 
+                         currentTab === tab.id ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-blue-100 hover:text-blue-800']">
+                {{ tab.name }}
+            </button>
+        </div>
+
+        <div class="min-h-[500px]">
+
+            <!-- ========================================= -->
+            <!-- TAB 1: KHỞI ĐỘNG (KÉO THẢ TƯƠNG TÁC)      -->
+            <!-- ========================================= -->
+            <div v-show="currentTab === 'tab1'" class="animate-fade-in">
+                <h2 class="text-2xl font-bold mb-4 text-blue-800 border-l-4 border-blue-600 pl-3">Trò chơi: Bản chất của Lực</h2>
+                <p class="mb-6 text-gray-700 text-lg">Hãy kéo các thẻ hiện tượng/khái niệm ở cột phải thả vào đúng mục đích ở cột trái để nhận diện các định nghĩa cơ bản.</p>
+                
+                <div class="flex flex-col md:flex-row gap-8">
+                    <!-- Cột Đích (Concept Zones) -->
+                    <div class="w-full md:w-1/2 flex flex-col gap-5">
+                        <h3 class="font-bold text-xl border-b-2 border-blue-200 pb-2 text-blue-600">Khái niệm Vật lý</h3>
+                        <div v-for="zone in conceptZones" :key="zone.id" 
+                             class="p-4 rounded-xl border-2 transition-colors duration-300 bg-gray-50"
+                             :class="getZoneColor(zone)">
+                            <div class="font-semibold mb-3 text-lg text-gray-800">{{ zone.title }}</div>
+                            <draggable v-model="zone.items" group="physics" item-key="id" @end="triggerMathJax"
+                                class="min-h-[70px] bg-white rounded-lg border-dashed border-2 border-gray-400 p-2 flex items-center justify-center shadow-inner">
+                                <template #item="{element}">
+                                    <div class="p-3 bg-white shadow-md rounded border border-blue-200 cursor-grab active:cursor-grabbing w-full text-center font-bold text-blue-800">
+                                        {{ element.text }}
+                                    </div>
+                                </template>
+                            </draggable>
+                        </div>
+                    </div>
+
+                    <!-- Cột Nguồn (Formula Bank) -->
+                    <div class="w-full md:w-1/2 flex flex-col gap-5">
+                        <h3 class="font-bold text-xl border-b-2 border-orange-200 pb-2 text-orange-600">Thẻ Hiện tượng / Mô tả</h3>
+                        <div class="bg-orange-50 p-6 rounded-xl min-h-[300px] border border-orange-200 shadow-inner">
+                            <draggable v-model="formulaBank" group="physics" item-key="id" @end="triggerMathJax"
+                                class="flex flex-col gap-4 min-h-[200px]">
+                                <template #item="{element}">
+                                    <div class="p-4 bg-white shadow-md rounded-lg border-l-4 border-orange-500 cursor-grab active:cursor-grabbing text-center hover:bg-orange-100 font-bold text-lg transition-colors">
+                                        {{ element.text }}
+                                    </div>
+                                </template>
+                            </draggable>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================= -->
+            <!-- TAB 2: LÝ THUYẾT TRỌNG TÂM (MATHJAX)      -->
+            <!-- ========================================= -->
+            <div v-show="currentTab === 'tab2'" class="animate-fade-in text-lg text-gray-800 leading-relaxed">
+                <h2 class="text-2xl font-bold mb-4 text-blue-800 border-l-4 border-blue-600 pl-3">Phân tích lực trên mặt phẳng nghiêng</h2>
+                
+                <div class="bg-blue-50 p-6 rounded-lg mb-6 border border-blue-200 shadow-sm">
+                    <h3 class="text-xl font-bold text-blue-700 mb-3">1. Nguyên tắc phân tích lực</h3>
+                    <p class="mb-4">Phân tích lực là phép thay thế một lực thành hai lực thành phần có tác dụng giống hệt như lực ấy.</p>
+                    <p class="mb-4 text-red-600 font-bold italic">Lưu ý: Thường người ta phân tích lực thành hai lực vuông góc với nhau để lực thành phần này không có tác dụng nào theo phương của lực thành phần kia.</p>
+                </div>
+
+                <div class="bg-green-50 p-6 rounded-lg mb-6 border border-green-200 shadow-sm">
+                    <h3 class="text-xl font-bold text-green-700 mb-3">2. Phân tích Trọng lực $\vec{P}$</h3>
+                    <p class="mb-4">Xét một vật đang trượt trên mặt phẳng nghiêng góc $\alpha$. Trọng lực $\vec{P}$ được phân tích thành 2 thành phần vuông góc:</p>
+                    <ul class="list-disc pl-6 space-y-3">
+                        <li><strong>Thành phần ép vật vào mặt phẳng ($\vec{P}_1$):</strong> Vuông góc với mặt phẳng nghiêng.
+                            <div class="text-center font-semibold text-blue-900 bg-white p-3 mt-2 rounded shadow-sm inline-block mx-auto flex justify-center">
+                                $$ P_1 = P \cos\alpha = mg \cos\alpha $$
+                            </div>
+                        </li>
+                        <li><strong>Thành phần kéo vật trượt xuống ($\vec{P}_2$):</strong> Song song với mặt phẳng nghiêng.
+                            <div class="text-center font-semibold text-blue-900 bg-white p-3 mt-2 rounded shadow-sm inline-block mx-auto flex justify-center">
+                                $$ P_2 = P \sin\alpha = mg \sin\alpha $$
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- ========================================= -->
+            <!-- TAB 3: MÔ PHỎNG ĐỒ THỊ THỜI GIAN THỰC     -->
+            <!-- ========================================= -->
+            <div v-show="currentTab === 'tab3'" class="animate-fade-in">
+                <h2 class="text-2xl font-bold mb-2 text-blue-800 border-l-4 border-blue-600 pl-3">Trực quan hóa Phân tích lực</h2>
+                <p class="mb-6 text-gray-700 text-lg">Khi mặt phẳng càng dốc (góc $\alpha$ tăng), thành phần lực nào sẽ chiếm ưu thế? Hãy kéo các thanh trượt dưới đây để quan sát sự thay đổi ngay lập tức trên đồ thị.</p>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Bảng điều khiển -->
+                    <div class="lg:col-span-1 bg-gray-50 p-6 rounded-xl border border-gray-300 shadow-sm h-full flex flex-col justify-center">
+                        <h3 class="font-bold text-xl mb-6 text-gray-800 border-b pb-2">Bảng điều khiển</h3>
+                        
+                        <!-- Thanh trượt Trọng lượng P -->
+                        <div class="mb-8">
+                            <label class="flex justify-between font-bold text-lg mb-2 text-blue-700">
+                                <span>Trọng lượng vật ($P$)</span>
+                                <span>{{ weightP }} N</span>
+                            </label>
+                            <input type="range" v-model.number="weightP" @input="updateChartRealtime" min="0" max="200" step="5" class="w-full h-3 bg-blue-200 rounded-lg appearance-none cursor-pointer mb-2">
+                        </div>
+
+                        <!-- Thanh trượt Góc nghiêng alpha -->
+                        <div class="mb-6">
+                            <label class="flex justify-between font-bold text-lg mb-2 text-orange-600">
+                                <span>Góc nghiêng ($\alpha$)</span>
+                                <span>{{ angleAlpha }}°</span>
+                            </label>
+                            <input type="range" v-model.number="angleAlpha" @input="updateChartRealtime" min="0" max="90" step="1" class="w-full h-3 bg-orange-200 rounded-lg appearance-none cursor-pointer mb-2">
+                        </div>
+
+                        <!-- Bảng giá trị tính toán nhanh -->
+                        <div class="mt-auto bg-blue-100 p-4 rounded-lg border border-blue-300 text-center shadow-inner">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-blue-800 mb-1">Ép ($P_1$)</p>
+                                    <p class="text-2xl font-black text-blue-900">{{ calcP1.toFixed(1) }}N</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-orange-800 mb-1">Trượt ($P_2$)</p>
+                                    <p class="text-2xl font-black text-orange-900">{{ calcP2.toFixed(1) }}N</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vùng vẽ Đồ thị Chart.js -->
+                    <div class="lg:col-span-2 bg-white p-4 rounded-xl border border-gray-200 shadow-md">
+                        <div class="relative w-full h-[400px]">
+                            <canvas id="forceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================= -->
+            <!-- TAB 4: TRẮC NGHIỆM TƯ DUY 2x2             -->
+            <!-- ========================================= -->
+            <div v-show="currentTab === 'tab4'" class="animate-fade-in">
+                <h2 class="text-2xl font-bold mb-6 text-blue-800 border-l-4 border-blue-600 pl-3">Đánh giá Năng lực (Phản hồi 2x2)</h2>
+                <p class="mb-6 text-gray-700 text-lg">Hệ thống gồm 4 câu hỏi quét từ mức độ Nhận biết đến Vận dụng cao. Các phản hồi sẽ chỉ rõ nguyên nhân đúng/sai dựa trên các định luật Vật lý.</p>
+                
+                <div class="flex flex-col gap-6">
+                    <div v-for="(q, qIndex) in quizData" :key="q.id" class="bg-white p-6 rounded-xl border shadow-sm transition-shadow">
+                        <span class="inline-block px-4 py-1 bg-blue-100 text-blue-800 text-sm font-bold rounded-full mb-4 shadow-sm">
+                            Mức độ: {{ q.level }}
+                        </span>
+                        
+                        <p class="text-xl font-bold mb-5 text-gray-800 leading-snug" v-html="q.question"></p>
+                        
+                        <!-- Trắc nghiệm Chọn đáp án (Choice) -->
+                        <div v-if="q.type === 'choice'" class="flex flex-col gap-3">
+                            <div v-for="option in q.options" :key="option.id"
+                                 @click="selectOption(q, option)"
+                                 :class="['p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 text-lg', getOptionClass(q, option)]">
+                                <span class="font-bold mr-3 bg-white px-2 py-1 rounded shadow-sm">{{ option.id }}</span> 
+                                <span v-html="option.text"></span>
+                            </div>
+                            
+                            <!-- Hộp thoại Phản hồi 2x2 -->
+                            <div v-if="q.selectedOption" 
+                                 :class="['mt-4 p-5 rounded-lg border-l-4 animate-fade-in text-lg shadow-inner', 
+                                          q.selectedOption.isCorrect ? 'bg-green-50 border-green-500 text-green-900' : 'bg-red-50 border-red-500 text-red-900']">
+                                <p v-html="q.selectedOption.feedback"></p>
+                            </div>
+                        </div>
+
+                        <!-- Trắc nghiệm Điền khuyết (Input) -->
+                        <div v-if="q.type === 'input'" class="flex flex-col gap-4">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-gray-50 p-5 rounded-lg border border-gray-200">
+                                <label class="font-bold text-gray-700 text-lg">Nhập đáp án:</label>
+                                <input type="text" v-model="q.studentAnswer" placeholder="VD: 1 hoặc 0,5" 
+                                       class="p-3 border-2 border-gray-400 rounded-lg text-lg w-full sm:w-64 focus:outline-none focus:border-blue-500 font-bold text-center tracking-wider shadow-sm">
+                                <button @click="checkInput(q)" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-lg shadow-md w-full sm:w-auto">
+                                    Kiểm tra
+                                </button>
+                            </div>
+                            
+                            <div v-if="q.isAnswered" 
+                                 :class="['mt-2 p-5 rounded-lg border-l-4 animate-fade-in text-lg shadow-inner', 
+                                          q.isCorrect ? 'bg-green-50 border-green-500 text-green-900' : 'bg-orange-50 border-orange-500 text-orange-900']">
+                                <p v-html="q.isCorrect ? q.feedbackSuccess : q.feedbackError"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script điều khiển Vue.js -->
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    // Dữ liệu quản lý Tab
+                    tabs: [
+                        { id: 'tab1', name: '1. Khởi động' },
+                        { id: 'tab2', name: '2. Lý thuyết' },
+                        { id: 'tab3', name: '3. Mô phỏng Đồ thị' },
+                        { id: 'tab4', name: '4. Trắc nghiệm' }
+                    ],
+                    currentTab: 'tab1',
+
+                    // Dữ liệu Kéo-thả (Tab 1)
+                    conceptZones: [
+                        { id: 'tonghop', title: 'Tổng hợp lực', items: [] },
+                        { id: 'phantich', title: 'Phân tích lực', items: [] },
+                        { id: 'canbang', title: 'Cân bằng lực', items: [] }
+                    ],
+                    formulaBank: [
+                        { id: 't1', text: 'Thay thế nhiều lực bằng một lực duy nhất có tác dụng giống hệt', matchId: 'tonghop' },
+                        { id: 't2', text: 'Chia một lực thành hai thành phần vuông góc để tính toán', matchId: 'phantich' },
+                        { id: 't3', text: 'Hợp lực của tất cả các lực tác dụng lên vật bằng 0', matchId: 'canbang' },
+                        { id: 't4', text: 'Hai tàu kéo cùng móc cáp đưa một tàu lớn vào cảng', matchId: 'tonghop' },
+                        { id: 't5', text: 'Trọng lực ép vật lên mặt phẳng và kéo vật trượt xuống', matchId: 'phantich' }
+                    ],
+
+                    // Dữ liệu Đồ thị Mô phỏng (Tab 3)
+                    weightP: 100,     // Trọng lượng P (N)
+                    angleAlpha: 30,   // Góc nghiêng (Độ)
+                    myChart: null,    // Biến lưu trữ Canvas Chart.js
+
+                    // Dữ liệu Trắc nghiệm (Tab 4)
+                    quizData: [
+                        {
+                            id: 1, level: 'Nhận biết', type: 'choice',
+                            question: 'Tại sao người ta thường phân tích một lực thành hai lực thành phần vuông góc với nhau?',
+                            options: [
+                                { id: 'A', text: 'Để lực thành phần này không có tác dụng nào theo phương của lực thành phần kia.', isCorrect: true, feedback: '<b>🎉 Chính xác:</b> Đây là nguyên tắc cốt lõi của phép phân tích lực, giúp việc tính toán động lực học độc lập trên từng trục toạ độ.' },
+                                { id: 'B', text: 'Để tăng độ lớn tác dụng của lực ban đầu.', isCorrect: false, feedback: '<b>💡 Lỗi ngộ nhận:</b> Phân tích lực là "chia nhỏ" một lực ra theo các phương, không làm tăng tổng tác dụng thực tế của hệ.' },
+                                { id: 'C', text: 'Để triệt tiêu hoàn toàn lực tác dụng lên vật.', isCorrect: false, feedback: '<b>💡 Lỗi logic:</b> Việc phân tích chỉ là đổi cách biểu diễn lực để dễ tính toán, hoàn toàn không triệt tiêu lực ban đầu.' },
+                                { id: 'D', text: 'Vì lực luôn phải vuông góc với quỹ đạo.', isCorrect: false, feedback: '<b>💡 Lỗi kiến thức:</b> Lực có thể tác dụng theo bất kỳ phương nào, ta chủ động chọn hệ toạ độ vuông góc để phân tích cho dễ.' }
+                            ],
+                            selectedOption: null
+                        },
+                        {
+                            id: 2, level: 'Thông hiểu', type: 'choice',
+                            question: 'Một vật trượt trên mặt phẳng nghiêng. Khi góc nghiêng $\\alpha$ tăng dần từ $0^\\circ$ đến $90^\\circ$, điều gì xảy ra với thành phần trọng lực kéo vật trượt xuống ($P_2$)?',
+                            options: [
+                                { id: 'A', text: 'Độ lớn $P_2$ giảm đi.', isCorrect: false, feedback: '<b>💡 Lỗi nhầm lẫn:</b> Bạn đang nhầm sang thành phần áp lực vuông góc $P_1 = P \\cos\\alpha$. Hãy nhớ $P_2$ dùng hàm $\\sin$.' },
+                                { id: 'B', text: 'Độ lớn $P_2$ không đổi, luôn bằng $P$.', isCorrect: false, feedback: '<b>💡 Lỗi kiến thức:</b> Trọng lực luôn hướng thẳng đứng xuống dưới. Chỉ một phần của nó ($P_2$) song song với mặt phẳng nghiêng mới gây ra gia tốc trượt.' },
+                                { id: 'C', text: 'Độ lớn $P_2$ tăng lên.', isCorrect: true, feedback: '<b>🎉 Chính xác:</b> Vì $P_2 = P \\sin\\alpha$, giá trị của hàm $\\sin$ sẽ tăng dần khi góc $\\alpha$ tăng từ $0^\\circ \\rightarrow 90^\\circ$.' },
+                                { id: 'D', text: 'Độ lớn $P_2$ tăng rồi giảm.', isCorrect: false, feedback: '<b>💡 Lỗi toán học:</b> Hàm $\\sin\\alpha$ đồng biến (chỉ tăng) trong khoảng từ $0^\\circ$ đến $90^\\circ$.' }
+                            ],
+                            selectedOption: null
+                        },
+                        {
+                            id: 3, level: 'Vận dụng', type: 'choice',
+                            question: 'Một khối gỗ khối lượng $m = 2\\text{ kg}$ đặt trên mặt phẳng nghiêng góc $30^\\circ$. Lấy $g = 9,8\\text{ m/s}^2$. Thành phần lực ép của khối gỗ vuông góc lên mặt phẳng nghiêng ($P_1$) có độ lớn gần bằng bao nhiêu?',
+                            options: [
+                                { id: 'A', text: '$17,0\\text{ N}$', isCorrect: true, feedback: '<b>🎉 Chính xác:</b> Trọng lượng $P = mg = 19,6\\text{ N}$. Lực ép $P_1 = P \\cos 30^\\circ = 19,6 \\times \\frac{\\sqrt{3}}{2} \\approx 17,0\\text{ N}$.' },
+                                { id: 'B', text: '$9,8\\text{ N}$', isCorrect: false, feedback: '<b>💡 Lỗi áp dụng công thức:</b> Bạn đã tính nhầm sang độ lớn thành phần kéo trượt $P_2 = P \\sin 30^\\circ = 19,6 \\times 0,5 = 9,8\\text{ N}$.' },
+                                { id: 'C', text: '$19,6\\text{ N}$', isCorrect: false, feedback: '<b>💡 Lỗi bỏ quên góc nghiêng:</b> Bạn mới chỉ tính trọng lượng $P = mg$, đây là lực ép trên mặt phẳng ngang, không phải mặt phẳng nghiêng!' },
+                                { id: 'D', text: '$20,0\\text{ N}$', isCorrect: false, feedback: '<b>💡 Lỗi số liệu:</b> Hãy kiểm tra lại cách lấy số $g = 9,8\\text{ m/s}^2$ và công thức $P_1 = P \\cos\\alpha$.' }
+                            ],
+                            selectedOption: null
+                        },
+                        {
+                            id: 4, level: 'Vận dụng cao', type: 'input',
+                            question: 'Một vật đang được giữ yên trên một mặt phẳng nghiêng góc $45^\\circ$. Bỏ qua ma sát. Tính tỉ số giữa thành phần trọng lực kéo vật trượt dọc theo mặt phẳng và thành phần trọng lực ép vuông góc với mặt phẳng (tỉ số $\\frac{P_2}{P_1}$).',
+                            correctAnswer: '1',
+                            feedbackSuccess: '🎉 <b>Tuyệt đỉnh! Phân tích bài toán:</b><br>Lập tỉ số: $\\frac{P_2}{P_1} = \\frac{P \\sin 45^\\circ}{P \\cos 45^\\circ} = \\tan 45^\\circ = 1$. Khi góc là $45^\\circ$, hai lực thành phần này hoàn toàn cân bằng về độ lớn!',
+                            feedbackError: '💡 <b>Phân tích lỗi:</b> <br>Tỉ số $\\frac{P_2}{P_1}$ thực chất chính là $\\frac{\\sin\\alpha}{\\cos\\alpha} = \\tan\\alpha$. Hãy lấy máy tính bấm $\\tan(45^\\circ)$ xem kết quả ra bao nhiêu nhé!',
+                            studentAnswer: '',
+                            isAnswered: false,
+                            isCorrect: false
+                        }
+                    ]
+                }
+            },
+            computed: {
+                // Tính toán P1, P2 để hiển thị trên bảng
+                calcP1() {
+                    let rad = this.angleAlpha * Math.PI / 180;
+                    return this.weightP * Math.cos(rad);
+                },
+                calcP2() {
+                    let rad = this.angleAlpha * Math.PI / 180;
+                    return this.weightP * Math.sin(rad);
+                }
+            },
+            mounted() {
+                this.initChart();
+                this.triggerMathJax();
+            },
+            methods: {
+                switchTab(tabId) {
+                    this.currentTab = tabId;
+                    this.triggerMathJax();
+                    
+                    // Xử lý Canvas Resize của Chart.js khi dùng v-show
+                    if (tabId === 'tab3') {
+                        this.$nextTick(() => {
+                            if (this.myChart) {
+                                this.myChart.resize();
+                            }
+                        });
+                    }
+                },
+                // Ràng buộc 3: Cập nhật vòng đời MathJax
+                triggerMathJax() {
+                    this.$nextTick(() => {
+                        if (window.MathJax && window.MathJax.typesetPromise) {
+                            window.MathJax.typesetPromise().catch((err) => console.log('MathJax error: ', err));
+                        }
+                    });
+                },
+
+                // Logic Đổi màu Kéo Thả
+                getZoneColor(zone) {
+                    if (zone.items.length === 0) return 'border-gray-300';
+                    const droppedItem = zone.items[0];
+                    return droppedItem.matchId === zone.id ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500';
+                },
+
+                // Logic khởi tạo Chart.js (Bar chart)
+                initChart() {
+                    const ctx = document.getElementById('forceChart').getContext('2d');
+                    
+                    // Sử dụng Vue.markRaw để tránh Vue nhầm lẫn Proxy với Canvas nội bộ
+                    this.myChart = Vue.markRaw(new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Thành phần Ép (P₁)', 'Thành phần Trượt (P₂)'],
+                            datasets: [{
+                                label: 'Độ lớn lực (N)',
+                                data: [this.calcP1, this.calcP2],
+                                backgroundColor: [
+                                    'rgba(37, 99, 235, 0.7)', // Màu xanh Blue cho P1
+                                    'rgba(234, 88, 12, 0.7)'  // Màu cam Orange cho P2
+                                ],
+                                borderColor: [
+                                    'rgba(37, 99, 235, 1)',
+                                    'rgba(234, 88, 12, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: {
+                                duration: 200, // Tối ưu realtime mượt mà
+                                easing: 'linear'
+                            },
+                            scales: {
+                                y: { 
+                                    title: { display: true, text: 'Độ lớn Lực (N)', font: { size: 14, weight: 'bold' } },
+                                    min: 0,
+                                    max: 200 // Fix max để thanh biểu đồ thụt lên xuống rõ ràng không bị giật khung
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    }));
+                },
+                
+                // Cập nhật lại Chart.js khi user kéo thanh trượt
+                updateChartRealtime() {
+                    if(!this.myChart) return;
+                    // Nạp dữ liệu mới
+                    this.myChart.data.datasets[0].data = [this.calcP1, this.calcP2];
+                    this.myChart.update();
+                },
+
+                // Logic Trắc nghiệm
+                selectOption(question, option) {
+                    question.selectedOption = option;
+                    this.triggerMathJax(); 
+                },
+                getOptionClass(question, option) {
+                    if (!question.selectedOption) return 'bg-gray-50 border-gray-200 hover:border-blue-400 hover:bg-blue-50';
+                    if (question.selectedOption.id === option.id) {
+                        return option.isCorrect ? 'bg-green-100 border-green-600 text-green-900 shadow-md' : 'bg-red-100 border-red-600 text-red-900 shadow-md';
+                    }
+                    return 'bg-gray-50 border-gray-200 opacity-50';
+                },
+                checkInput(question) {
+                    question.isAnswered = true;
+                    // Chuẩn hoá đáp án (loại bỏ khoảng trắng)
+                    if (question.studentAnswer.trim() === question.correctAnswer) {
+                        question.isCorrect = true;
+                    } else {
+                        question.isCorrect = false;
+                    }
+                    this.triggerMathJax();
+                }
+            },
+            updated() {
+                // Đảm bảo mọi thay đổi DOM đều được quét lại bởi MathJax
+                this.triggerMathJax();
+            }
+        });
+
+        // Đăng ký component VueDraggable
+        app.component('draggable', vuedraggable);
+        app.mount('#app');
+    </script>
+</body>
+</html>
